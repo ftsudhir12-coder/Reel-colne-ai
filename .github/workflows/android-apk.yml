@@ -111,15 +111,37 @@ jobs:
           cd "$PROJECT_DIR"
           npm run build
 
-      - name: Setup Capacitor Android
+            - name: Setup Capacitor Android
         shell: bash
         run: |
           cd "$PROJECT_DIR"
+
+          if [ -f "capacitor.config.ts" ]; then
+            node -e '
+              const fs = require("fs");
+              const raw = fs.readFileSync("capacitor.config.ts", "utf8");
+              const appIdMatch = raw.match(/appId\s*:\s*["'\'']([^"'\'']+)["'\'']/);
+              const appNameMatch = raw.match(/appName\s*:\s*["'\'']([^"'\'']+)["'\'']/);
+              const webDirMatch = raw.match(/webDir\s*:\s*["'\'']([^"'\'']+)["'\'']/);
+
+              const webDir = webDirMatch ? webDirMatch[1] : (fs.existsSync("dist") ? "dist" : "build");
+              const cfg = {
+                appId: appIdMatch ? appIdMatch[1] : "com.reelclone.ai",
+                appName: appNameMatch ? appNameMatch[1] : "ReelClone AI",
+                webDir: webDir
+              };
+
+              fs.writeFileSync("capacitor.config.json", JSON.stringify(cfg, null, 2));
+              fs.unlinkSync("capacitor.config.ts");
+              console.log("Converted capacitor.config.ts to capacitor.config.json:", cfg);
+            '
+          fi
+
           if [ ! -d "android" ]; then
             npx cap add android
           fi
           npx cap sync android
-
+          
       - name: Build APK
         shell: bash
         run: |
